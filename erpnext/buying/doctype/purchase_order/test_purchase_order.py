@@ -1230,26 +1230,43 @@ class TestPurchaseOrder(FrappeTestCase):
 	
 	def test_single_po_pi_TC_B_001(self):
 		# Scenario : PO => PR => 1PI
-		args = frappe._dict()
-		po_data = {
-			"company" : "_Test Company",
-			"item_code" : "_Test Item",
-			"warehouse" : "Stores - _TC",
-			"qty" : 6,
-			"rate" : 100,
-		}
-		
-		doc_po = create_purchase_order(**po_data)
-		self.assertEqual(doc_po.docstatus, 1)
-		
-		doc_pr = make_pr_for_po(doc_po.name)
-		self.assertEqual(doc_pr.docstatus, 1)
+		frappe.set_user("Administrator")
+		company = "_Test Company"
+		warehouse = "Stores - _TC"
+		supplier = "_Test Supplier 1"
+		item = make_test_item("Testing-31")
 
-		doc_pi = make_pi_against_pr(doc_pr.name)
-		self.assertEqual(doc_pi.docstatus, 1)
-		self.assertEqual(doc_pi.items[0].qty, doc_po.items[0].qty)
-		self.assertEqual(doc_pi.grand_total, doc_po.grand_total)
-	
+		po = frappe.get_doc({
+			"doctype": "Purchase Order",
+			"supplier": supplier,
+			"company": company,
+			"schedule_date": today(),
+			"set_warehouse": warehouse,
+			"items": [
+				{
+					"item_code": item.item_code,
+					"qty": 6,
+					"rate": 100,
+					"warehouse": warehouse,
+				}
+			],
+		})
+		po.insert()
+		po.submit()
+		self.assertEqual(po.docstatus, 1)
+
+		pr = make_purchase_receipt(po.name)
+		pr.insert()
+		pr.submit()
+		self.assertEqual(pr.docstatus, 1)
+
+		pi = make_purchase_invoice(pr.name)
+		pi.insert()
+		pi.submit()
+		self.assertEqual(pi.docstatus, 1)
+		self.assertEqual(pi.items[0].qty, po.items[0].qty)
+		self.assertEqual(pi.grand_total, po.grand_total)
+
 	def test_mr_pi_TC_B_002(self):
 		# MR =>  PO => PR => PI
 		frappe.set_user("Administrator")
@@ -1400,25 +1417,39 @@ class TestPurchaseOrder(FrappeTestCase):
 	
 	def test_single_po_multi_pr_pi_TC_B_006(self):
 		# Scenario : 1PO => 2PR => 2PI
-		
-		purchase_order_list = [{
-			"company" : "_Test Company",
-			"item_code" : "_Test Item",
-			"warehouse" : "Stores - _TC",
-			"qty" : 6,
-			"rate" : 100,
-		}]
+		frappe.set_user("Administrator")
+		company = "_Test Company"
+		warehouse = "Stores - _TC"
+		supplier = "_Test Supplier 1"
+		item = make_test_item("Testing-31")
+
+		po = frappe.get_doc({
+			"doctype": "Purchase Order",
+			"supplier": supplier,
+			"company": company,
+			"schedule_date": today(),
+			"set_warehouse": warehouse,
+			"items": [
+				{
+					"item_code": item.item_code,
+					"qty": 6,
+					"rate": 100,
+					"warehouse": warehouse,
+				}
+			],
+		})
+		po.insert()
+		po.submit()
+		self.assertEqual(po.docstatus, 1)
 
 		pur_invoice_dict = frappe._dict({
 			"total_amount" : 0,
 			"total_qty" : 0
 		})
 		pur_receipt_qty = [3, 3]
-		doc_po = create_purchase_order(**purchase_order_list[0])
-		self.assertEqual(doc_po.docstatus, 1)
 
 		for received_qty in pur_receipt_qty:
-			doc_pr = make_pr_for_po(doc_po.name, received_qty)
+			doc_pr = make_pr_for_po(po.name, received_qty)
 			self.assertEqual(doc_pr.docstatus, 1)
 			
 			doc_pi = make_pi_against_pr(doc_pr.name)
@@ -1427,45 +1458,60 @@ class TestPurchaseOrder(FrappeTestCase):
 			pur_invoice_dict.update({"total_amount" : pur_invoice_dict.total_amount + doc_pi.grand_total })
 			pur_invoice_dict.update({"total_qty" : pur_invoice_dict.total_qty + doc_pi.total_qty })
 		
-		self.assertEqual(doc_po.total_qty, pur_invoice_dict.total_qty)
-		self.assertEqual(doc_po.grand_total, pur_invoice_dict.total_amount)
+		self.assertEqual(po.total_qty, pur_invoice_dict.total_qty)
+		self.assertEqual(po.grand_total, pur_invoice_dict.total_amount)
 	
 	def test_single_po_pi_multi_pr_TC_B_005(self):
 		# Scenario : 1PO => 2PR => 1PI
-		
-		purchase_order_list = [{
-			"company" : "_Test Company",
-			"item_code" : "_Test Item",
-			"warehouse" : "Stores - _TC",
-			"qty" : 6,
-			"rate" : 100,
-		}]
+		frappe.set_user("Administrator")
+		company = "_Test Company"
+		warehouse = "Stores - _TC"
+		supplier = "_Test Supplier 1"
+		item = make_test_item("Testing-31")
+
+		po = frappe.get_doc({
+			"doctype": "Purchase Order",
+			"supplier": supplier,
+			"company": company,
+			"schedule_date": today(),
+			"set_warehouse": warehouse,
+			"items": [
+				{
+					"item_code": item.item_code,
+					"qty": 6,
+					"rate": 100,
+					"warehouse": warehouse,
+				}
+			],
+		})
+		po.insert()
+		po.submit()
+		self.assertEqual(po.docstatus, 1)
 
 		pur_receipt_qty = [3, 3]
 		pur_receipt_name_list = []
 
-		doc_po = create_purchase_order(**purchase_order_list[0])
-		self.assertEqual(doc_po.docstatus, 1)
-
 		for received_qty in pur_receipt_qty:
-			doc_pr = make_pr_for_po(doc_po.name, received_qty)
+			doc_pr = make_pr_for_po(po.name, received_qty)
 			self.assertEqual(doc_pr.docstatus, 1)
 			
 			pur_receipt_name_list.append(doc_pr.name)
 		
 		item_dict = [
-					{"item_code" : "_Test Item",
-					"warehouse" : "Stores - _TC",
-					"qty" : 3,
-					"rate" : 100,
-					"purchase_receipt":pur_receipt_name_list[1]
-					}]
-		
+			{
+				"item_code" : item.item_code,
+				"warehouse" : warehouse,
+				"qty" : 3,
+				"rate" : 100,
+				"purchase_receipt":pur_receipt_name_list[1]
+			}
+		]
+
 		doc_pi = make_pi_against_pr(pur_receipt_name_list[0], item_dict_list= item_dict)
-		
+
 		self.assertEqual(doc_pi.docstatus, 1)
-		self.assertEqual(doc_po.total_qty, doc_pi.total_qty)
-		self.assertEqual(doc_po.grand_total, doc_pi.grand_total)
+		self.assertEqual(po.total_qty, doc_pi.total_qty)
+		self.assertEqual(po.grand_total, doc_pi.grand_total)
 	
 	def test_create_purchase_receipt_partial_TC_SCK_037(self):
 		po = create_purchase_order(rate=10000,qty=10)
@@ -1570,13 +1616,29 @@ class TestPurchaseOrder(FrappeTestCase):
 		check_payment_gl_entries(self, pe.name, expected_gle)
 
 	def test_purchase_invoice_cancellation_TC_B_041(self):
-		from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice
+		frappe.set_user("Administrator")
+		company = "_Test Company"
+		warehouse = "Stores - _TC"
+		supplier = "_Test Supplier 1"
+		item = make_test_item("Testing-31")
 
-		po = create_purchase_order(		
-			warehouse="Finished Goods - _TC",
-			rate=130,
-			qty=1,
-		)
+		po = frappe.get_doc({
+			"doctype": "Purchase Order",
+			"supplier": supplier,
+			"company": company,
+			"schedule_date": today(),
+			"set_warehouse": warehouse,
+			"items": [
+				{
+					"item_code": item.item_code,
+					"qty": 1,
+					"rate": 130,
+					"warehouse": warehouse,
+				}
+			],
+		})
+		po.insert()
+		po.submit()
 		self.assertEqual(po.status, "To Receive and Bill")
 
 		pr = make_purchase_receipt(po.name)
@@ -1602,14 +1664,31 @@ class TestPurchaseOrder(FrappeTestCase):
 		pr_status = frappe.db.get_value("Purchase Receipt", pr.name, "status")
 		self.assertEqual(pr_status, "To Bill")
 	def test_purchase_invoice_return_TC_B_042(self):
-		from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice
 		from erpnext.accounts.doctype.purchase_invoice.purchase_invoice import make_debit_note
+		frappe.set_user("Administrator")
+		company = "_Test Company"
+		warehouse = "Stores - _TC"
+		supplier = "_Test Supplier 1"
+		item = make_test_item("Testing-31")
 
-		po = create_purchase_order(		
-			warehouse="Finished Goods - _TC",
-			rate=130,
-			qty=1,
-		)
+		po = frappe.get_doc({
+			"doctype": "Purchase Order",
+			"supplier": supplier,
+			"company": company,
+			"schedule_date": today(),
+			"set_warehouse": warehouse,
+			"items": [
+				{
+					"item_code": item.item_code,
+					"qty": 1,
+					"rate": 130,
+					"warehouse": warehouse,
+				}
+			],
+		})
+		po.insert()
+		po.submit()
+
 		pr = make_purchase_receipt(po.name)
 		pr.save()
 		pr.submit()
@@ -1667,35 +1746,39 @@ class TestPurchaseOrder(FrappeTestCase):
 		pi_status = frappe.db.get_value("Purchase Invoice", pi.name, "status")
 		self.assertEqual(pi_status, "Paid")
 
-		
-
-
 	def test_status_po_on_pi_cancel_TC_B_038(self):
-		from erpnext.accounts.doctype.payment_entry.test_payment_entry import create_payment_entry
 		from erpnext.accounts.doctype.unreconcile_payment.unreconcile_payment import payment_reconciliation_record_on_unreconcile,create_unreconcile_doc_for_selection
+		frappe.set_user("Administrator")
+		company = "_Test Company"
+		warehouse = "Stores - _TC"
+		supplier = "_Test Supplier 1"
+		item = make_test_item("Testing-31")
 
-		po = create_purchase_order()
+		po = frappe.get_doc({
+			"doctype": "Purchase Order",
+			"supplier": supplier,
+			"company": company,
+			"schedule_date": today(),
+			"set_warehouse": warehouse,
+			"items": [
+				{
+					"item_code": item.item_code,
+					"qty": 10,
+					"rate": 500,
+					"warehouse": warehouse,
+				}
+			],
+		})
+		po.insert()
+		po.submit()
+		self.assertEqual(po.docstatus, 1)
 		
 		pi = make_pi_from_po(po.name)
 		pi.update_stock = 1
 		pi.insert()
 		pi.submit()
 
-		pe = create_payment_entry(
-			company=f"{pi.company}",
-			payment_type="Pay",
-			party_type="Supplier",
-			party=f"{pi.supplier}",
-			paid_from="Cash - _TC",
-			paid_to="Creditors - _TC",
-			paid_amount=pi.grand_total,
-		)
-		
-		pe.append('references',{
-			"reference_doctype": "Purchase Invoice",
-			"reference_name": pi.name,
-			"allocated_amount":pi.grand_total
-		})
+		pe = get_payment_entry(pi.doctype, pi.name)
 		pe.save()
 		pe.submit()
 
@@ -1703,11 +1786,11 @@ class TestPurchaseOrder(FrappeTestCase):
 		self.assertEqual(before_pi_cancel_status, "Completed")
 		
 		header = {
-			"company":"_Test Company",
+			"company":company,
 			"unreconcile":1,
 			"clearing_date":"2025-01-07",
 			"party_type":"Supplier",
-			"party":"_Test Supplier"
+			"party": supplier
 		}
 		selection = {"company":"_Test Company","voucher_type":"Payment Entry","voucher_no":f"{pe.name}","against_voucher_type":"Purchase Invoice","against_voucher_no":f"{pi.name}","allocated_amount":pi.rounded_total}
 		allocation = [{"reference_type":"Payment Entry","reference_name":pe.name,"invoice_type":"Purchase Invoice","invoice_number":pi.name,"allocated_amount":pi.rounded_total}]
@@ -3879,50 +3962,63 @@ class TestPurchaseOrder(FrappeTestCase):
 
 	def test_shipping_rule_with_payment_entry_TC_B_070(self):
 		# Scenario : PO => PE => PR => PI [With Shipping Rule]
+		frappe.set_user("Administrator")
+		company = "_Test Company"
+		warehouse = "Stores - _TC"
+		supplier = "_Test Supplier 1"
+		item = make_test_item("Testing-31")
+
 		args = {
 					"calculate_based_on" : "Fixed",
 					"shipping_amount" : 200
 				}
 		shipping_rule_name = get_shipping_rule_name(args)
-		
-		po_data = {
-			"company" : "_Test Company",
-			"item_code" : "_Test Item",
-			"warehouse" : "Stores - _TC",
-			"qty" : 3,
-			"rate" : 100,
-			"shipping_rule" :shipping_rule_name
 
-		}
-		
-		doc_po = create_purchase_order(**po_data)
-		self.assertEqual(doc_po.docstatus, 1)
+		po = frappe.get_doc({
+			"doctype": "Purchase Order",
+			"supplier": supplier,
+			"company": company,
+			"schedule_date": today(),
+			"set_warehouse": warehouse,
+			"items": [
+				{
+					"item_code": item.item_code,
+					"qty": 1,
+					"rate": 130,
+					"warehouse": warehouse,
+				}
+			],
+			"shipping_rule": shipping_rule_name
+		})
+		po.insert()
+		po.submit()
+		self.assertEqual(po.docstatus, 1)
 
 		args = {
 			"mode_of_payment" : "Cash",
 			"reference_no" : "For Testing"
 		}
 
-		doc_pe = make_payment_entry(doc_po.doctype, doc_po.name, doc_po.grand_total, args )
+		pe = make_payment_entry(po.doctype, po.name, po.grand_total, args )
 		
-		doc_pr = make_pr_for_po(doc_po.name)
-		self.assertEqual(doc_pr.docstatus, 1)
+		pr = make_pr_for_po(po.name)
+		self.assertEqual(pr.docstatus, 1)
 
 		args = {
 			"is_paid" : 1,
 			"mode_of_payment" : 'Cash',
-			"cash_bank_account" : doc_pe.paid_from,
-			"paid_amount" : doc_pe.base_received_amount
+			"cash_bank_account" : pe.paid_from,
+			"paid_amount" : pe.base_received_amount
 		}
 
-		doc_pi = make_pi_against_pr(doc_pr.name, args=args)
-		self.assertEqual(doc_pi.docstatus, 1)
-		self.assertEqual(doc_pi.items[0].qty, doc_po.items[0].qty)
-		self.assertEqual(doc_pi.grand_total, doc_po.grand_total)
+		pi = make_pi_against_pr(pr.name, args=args)
+		self.assertEqual(pi.docstatus, 1)
+		self.assertEqual(pi.items[0].qty, po.items[0].qty)
+		self.assertEqual(pi.grand_total, po.grand_total)
 		
-		doc_po.reload()
-		self.assertEqual(doc_po.status, 'Completed')
-		self.assertEqual(doc_pi.status, 'Paid')
+		po.reload()
+		self.assertEqual(po.status, 'Completed')
+		self.assertEqual(pi.status, 'Paid')
 	
 	def test_po_shipping_rule_partial_payment_entry_TC_B_071(self):
 		# Scenario : PO => PE => PR => PI [With Shipping Rule]

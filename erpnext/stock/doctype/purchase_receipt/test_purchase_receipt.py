@@ -4510,49 +4510,31 @@ class TestPurchaseReceipt(FrappeTestCase):
 		pi.submit()
 
 	def test_putaway_rule_with_pr_pi_TC_B_153(self):
+		from erpnext.accounts.doctype.payment_entry.test_payment_entry import make_test_item
+		frappe.set_user("Administrator")
 		company = "_Test Company"
 		warehouse = "Stores - _TC"
 		overflow_warehouse = "Overflow Warehouse - _TC"
 		supplier = "_Test Supplier 1"
-		item_code = "Test Item with Putaway Rule"
-		quantity = 30
-		gst_hsn_code = "11112222"
-		if not frappe.db.exists("GST HSN Code", gst_hsn_code):
-			gst_hsn_code = frappe.new_doc("GST HSN Code")
-			gst_hsn_code.hsn_code = "11112222"
-			gst_hsn_code.save()
+		item = make_test_item("Test Item with Putaway Rule")
 
-		if not frappe.db.exists("Item", item_code):
-			item = frappe.get_doc({
-				"doctype": "Item",
-				"item_code": item_code,
-				"item_name": item_code,
-				"stock_uom": "Nos",
-				"is_stock_item": 1,
-				"item_group": "All Item Groups",
-				"default_warehouse": warehouse,
-				"company": company,
-				"gst_hsn_code": gst_hsn_code
-			})
-			item.insert()
-
-		if not frappe.db.exists("Putaway Rule", {"item_code": item_code, "warehouse": warehouse}):
+		if not frappe.db.exists("Putaway Rule", {"item_code": item.item_code, "warehouse": warehouse}):
 			frappe.get_doc({
 				"company": company,
 				"doctype": "Putaway Rule",
-				"item_code": item_code,
+				"item_code": item.item_code,
 				"warehouse": warehouse,
 				"capacity": 20,
 				"priority": 1,
 				"default_location": overflow_warehouse,
-			}).insert()
+			}).insert(ignore_if_duplicate=1)
 
 		pr = frappe.get_doc({
 			"doctype": "Purchase Receipt",
 			"supplier": supplier,
 			"company": company,
 			"items": [{
-				"item_code": item_code,
+				"item_code": item.item_code,
 				"qty": 20,
 				"warehouse": warehouse,
 			}],
@@ -4573,16 +4555,8 @@ class TestPurchaseReceipt(FrappeTestCase):
 
 		warehouse_qty = sum(entry.actual_qty for entry in stock_ledger_entries if entry.warehouse == warehouse)
 		self.assertEqual(warehouse_qty, 20)
-		pi = frappe.get_doc({
-			"doctype": "Purchase Invoice",
-			"supplier": supplier,
-			"company": company,
-			"items": [{
-				"item_code": item_code,
-				"qty": pr.items[0].qty,
-				"warehouse": warehouse,
-			}],
-		})
+
+		pi = make_purchase_invoice(pr.name)
 		pi.insert()
 		pi.submit()
 		self.assertEqual(pi.docstatus, 1)
@@ -4627,49 +4601,32 @@ class TestPurchaseReceipt(FrappeTestCase):
 		self.assertEqual(len(sle_entries), 1)
 
 	def test_putaway_rule_with_pr_TC_B_154(self):
+		from erpnext.accounts.doctype.payment_entry.test_payment_entry import make_test_item
+		frappe.set_user("Administrator")
 		company = "_Test Company"
 		warehouse = "Stores - _TC"
 		overflow_warehouse = "Overflow Warehouse - _TC"
 		supplier = "_Test Supplier 1"
-		item_code = "Test Item with Putaway Rule"
 		quantity = 30
-		gst_hsn_code = 48030090
-		if not frappe.db.exists("GST HSN Code", gst_hsn_code):
-			gst_hsn_code = frappe.new_doc("GST HSN Code")
-			gst_hsn_code.hsn_code = 48030090
-			gst_hsn_code.save()
+		item = make_test_item("Test Item with Putaway Rule")
 
-		if not frappe.db.exists("Item", item_code):
-			item = frappe.get_doc({
-				"doctype": "Item",
-				"item_code": item_code,
-				"item_name": item_code,
-				"stock_uom": "Nos",
-				"is_stock_item": 1,
-				"item_group": "All Item Groups",
-				"default_warehouse": warehouse,
-				"company": company,
-				"gst_hsn_code": gst_hsn_code
-			})
-			item.insert()
-
-		if not frappe.db.exists("Putaway Rule", {"item_code": item_code, "warehouse": warehouse}):
+		if not frappe.db.exists("Putaway Rule", {"item_code": item.item_code, "warehouse": warehouse}):
 			frappe.get_doc({
 				"company": company,
 				"doctype": "Putaway Rule",
-				"item_code": item_code,
+				"item_code": item.item_code,
 				"warehouse": warehouse,
 				"capacity": 20,
 				"priority": 1,
 				"default_location": overflow_warehouse,
-			}).insert()
+			}).insert(ignore_if_duplicate=1)
 
 		pr = frappe.get_doc({
 			"doctype": "Purchase Receipt",
 			"supplier": supplier,
 			"company": company,
 			"items": [{
-				"item_code": item_code,
+				"item_code": item.item_code,
 				"qty": 20,
 				"warehouse": warehouse,
 			}],
