@@ -4705,16 +4705,15 @@ class TestPurchaseReceipt(FrappeTestCase):
 
 	def test_pr_with_additional_discount_TC_B_053(self):
 		# Scenario : PR => PI [With Additional Discount]
-		from erpnext.stock.doctype.purchase_receipt.purchase_receipt import (
-			make_purchase_invoice as make_pi_from_pr,
-		)
+		from erpnext.accounts.doctype.payment_entry.test_payment_entry import make_test_item
+		item = make_test_item("Testing-31")
 
 		pr_data = {
 			"company" : "_Test Company",
-			"item_code" : "_Test Item",
+			"item_code" : item.item_code,
 			"warehouse" : "Stores - _TC",
 			"supplier": "_Test Supplier",
-            "schedule_date": "2025-01-13",
+            "schedule_date": today(),
 			"qty" : 1,
 			"rate" : 10000,
 			"apply_discount_on" : "Net Total",
@@ -4741,7 +4740,7 @@ class TestPurchaseReceipt(FrappeTestCase):
 		self.assertEqual(doc_pr.discount_amount, 1000)
 		self.assertEqual(doc_pr.grand_total, 10080)
 
-		pi = make_pi_from_pr(doc_pr.name)
+		pi = make_purchase_invoice(doc_pr.name)
 		pi.insert()
 		pi.submit()
 
@@ -4757,16 +4756,14 @@ class TestPurchaseReceipt(FrappeTestCase):
 
 	def test_pr_to_pi_with_additional_discount_TC_B_059(self):
 		# Scenario : PR => PI [With Applied Additional Discount on Grand Total]
-		from erpnext.stock.doctype.purchase_receipt.purchase_receipt import (
-			make_purchase_invoice as make_pi_from_pr,
-		)
-
+		from erpnext.accounts.doctype.payment_entry.test_payment_entry import make_test_item
+		item = make_test_item("Testing-31")
 		pr_data = {
 			"company" : "_Test Company",
-			"item_code" : "_Test Item",
+			"item_code" : item.item_code,
 			"warehouse" : "Stores - _TC",
 			"supplier": "_Test Supplier",
-            "schedule_date": "2025-01-13",
+            "schedule_date": today(),
 			"qty" : 1,
 			"rate" : 10000,
 			"apply_discount_on" : "Grand Total",
@@ -4793,7 +4790,7 @@ class TestPurchaseReceipt(FrappeTestCase):
 		self.assertEqual(doc_pr.discount_amount, 1120)
 		self.assertEqual(doc_pr.grand_total, 10080)
 
-		pi = make_pi_from_pr(doc_pr.name)
+		pi = make_purchase_invoice(doc_pr.name)
 		pi.insert()
 		pi.submit()
 
@@ -4809,13 +4806,15 @@ class TestPurchaseReceipt(FrappeTestCase):
 
 	def test_standalone_pr_with_additional_discount_TC_B_062(self):
 		# Scenario : Standalone PR [With Applied Additional Discount on Grand Total]
+		from erpnext.accounts.doctype.payment_entry.test_payment_entry import make_test_item
+		item = make_test_item("Testing-31")
 
 		pr_data = {
 			"company" : "_Test Company",
-			"item_code" : "_Test Item",
+			"item_code" : item.item_code,
 			"warehouse" : "Stores - _TC",
 			"supplier": "_Test Supplier",
-            "schedule_date": "2025-01-13",
+            "schedule_date": today(),
 			"qty" : 1,
 			"rate" : 10000,
 			"apply_discount_on" : "Grand Total",
